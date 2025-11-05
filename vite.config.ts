@@ -1,5 +1,5 @@
 /* eslint-disable import/no-extraneous-dependencies */
-
+import react from '@vitejs/plugin-react'
 import { devtools } from '@tanstack/devtools-vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import { visualizer } from 'rollup-plugin-visualizer';
@@ -36,14 +36,15 @@ export default defineConfig(({ mode }) => {
   const isCheckDisabled = mode === 'production' || !!process.env.VITEST;
   return {
     plugins: [
+      react(),
       devtools(),
       tanstackRouter({ autoCodeSplitting: true }),
       ...(!isCheckDisabled
         ? [
-            checker({
-              typescript: true,
-            }),
-          ]
+          checker({
+            typescript: true,
+          }),
+        ]
         : []),
       tsconfigPaths(),
       visualizer({ template: 'sunburst' }) as unknown as PluginOption,

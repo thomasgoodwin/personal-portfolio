@@ -1,25 +1,25 @@
 import { Box, Flex } from '@chakra-ui/react';
 import type { ReactNode } from 'react';
-
 import { Footer } from './components/footer';
 import { Header } from './components/header';
 import { Meta } from './components/meta';
+import "./styles.css";
 
 type LayoutProps = {
   children: ReactNode;
 };
 
 export const Layout = ({ children }: LayoutProps) => {
-  return (
-    <Box margin="0 auto" maxWidth={800} transition="0.5s ease-out">
-      <Meta />
-      <Flex wrap="wrap" margin="8" minHeight="90vh">
+  return <Box transition="0.5s ease-out" minHeight="100vh">
+    <Meta />
+    <Flex flexDirection="column" padding={12} minHeight="100vh">
+      <Box className="frame" flex="1" display="flex" flexDirection="column">
         <Header />
-        <Box width="full" as="main" marginY={22}>
+        <Box as="main" flex="1">
           {children}
         </Box>
         <Footer />
-      </Flex>
-    </Box>
-  );
+      </Box>
+    </Flex>
+  </Box>
 };

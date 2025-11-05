@@ -1,5 +1,6 @@
 import { Flex, Link, Text } from '@chakra-ui/react';
-
+ import { FaLinkedin } from 'react-icons/fa';
+ 
 export const Footer = () => {
   return (
     <Flex
@@ -10,13 +11,12 @@ export const Footer = () => {
       justifyContent="center"
     >
       <Text fontSize="xs">
-        {new Date().getFullYear()} -{' '}
         <Link
-          href="https://agustinusnathaniel.com"
+          href="https://www.linkedin.com/in/thomas-g-goodwin/"
           target="_blank"
           rel="noopener noreferrer"
         >
-          agustinusnathaniel.com
+           <FaLinkedin /> LinkedIn
         </Link>
       </Text>
     </Flex>

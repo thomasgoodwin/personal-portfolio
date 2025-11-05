@@ -1,17 +1,9 @@
-import { Grid } from '@chakra-ui/react';
-
-import { CTASection } from './components/cta-section';
-import { SomeImage } from './components/some-image';
-import { SomeText } from './components/some-text';
+import "./styles.css";
 
 const Home = () => {
-  return (
-    <Grid gap={4}>
-      <SomeText />
-      <SomeImage />
-      <CTASection />
-    </Grid>
-  );
+  return <div className="home">
+    test
+  </div>
 };
 
 export default Home;
