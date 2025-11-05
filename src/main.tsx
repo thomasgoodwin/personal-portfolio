@@ -2,7 +2,6 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import ReactDOM from 'react-dom/client';
-
 import { Provider } from '@/lib/components/ui/provider';
 import Page404 from '@/lib/pages/404';
 import { queryClient } from '@/lib/services/constants';
