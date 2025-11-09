@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import React, { useRef, useState, useEffect, useMemo, Suspense } from 'react';
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
-import { OrbitControls } from "@react-three/drei";
 import { OBJLoader } from "three-stdlib";
 
 interface VerticesModelProps {

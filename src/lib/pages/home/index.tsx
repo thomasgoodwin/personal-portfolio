@@ -27,7 +27,7 @@ const Home = () => {
     >
       <VerticesViewer camera={{ position: cameraPos, fov: 65 }} height={height}>
         <VerticesModel
-          url="/assets/mountain2.obj"
+          url="/assets/mountain.obj"
           normalColor="#000000"
           hoverColor="#00ff00"
           pointSize={.022}
