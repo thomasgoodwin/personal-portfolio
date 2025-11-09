@@ -9,14 +9,15 @@ type TypewriterProps = {
   baseDelay?: number;
   pauseTime?: number;
   sameLetterAffinity?: number;
-  complex?: boolean
+  complex?: boolean;
+  style?: object;
 };
 
 function getKeyboardCoordinate(key: string): Array<number> {
   return keyboardSectionAssignment[key as keyof typeof keyboardSectionAssignment] ?? undefined;
 }
 
-const Typewriter: React.FC<TypewriterProps> = ({ text = "", speed = 50, baseDelay = 50, pauseTime = 400, sameLetterAffinity = .8, complex = false }: TypewriterProps) => {
+const Typewriter: React.FC<TypewriterProps> = ({ text = "", speed = 50, baseDelay = 50, pauseTime = 400, sameLetterAffinity = .8, complex = false, style }: TypewriterProps) => {
   const [displayedText, setDisplayedText] = useState<string>("");
   const [leftHandRow, setLeftHandRow] = useState<number>(homeRow);
   const [rightHandRow, setRightHandRow] = useState<number>(homeRow);
@@ -57,7 +58,7 @@ const Typewriter: React.FC<TypewriterProps> = ({ text = "", speed = 50, baseDela
     setDisplayedText("")
   }, [text, complex, speed])
 
-  return <div className="typewriter">
+  return <div className="typewriter" style={style}>
     {displayedText.split("").map((letter) => <span className="fade-in-letter">{letter}</span>)}
     <span className={"cursor" + (textIndex === text.length ? " blink" : "")}>|</span>
   </div>

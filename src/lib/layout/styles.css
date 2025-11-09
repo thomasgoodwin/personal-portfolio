@@ -2,6 +2,6 @@
   padding: 2rem;
 }
 .frame {
-  padding: 2rem;
   border: .5px solid rgba(255, 255, 255, .5); 
+  margin: 1rem 2rem;
 }

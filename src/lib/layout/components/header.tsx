@@ -11,6 +11,7 @@ export const Header = () => {
       alignSelf="flex-start"
       justifyContent="center"
       gridGap={2}
+      paddingX={6}
     >
       <Box marginLeft="auto">
         <ColorModeButton />
