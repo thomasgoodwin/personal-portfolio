@@ -1,14 +1,52 @@
+import { useState } from 'react';
 import { ObjViewer, ObjModel } from '@/lib/components/Renderers/ObjRenderer';
 import { VerticesViewer, VerticesModel } from '@/lib/components/Renderers/VerticesRenderer';
-import "./styles.css";
 import { useElementHeight } from '@/lib/layout/components/HeightProvider/HeightProvider';
+import AnimateUnderline from '@/lib/components/AnimateUnderline/AnimateUnderline';
+import {
+  ColorPicker,
+  parseColor,
+  Text,
+  type ColorPickerValueChangeDetails,
+} from "@chakra-ui/react"
+import { Link } from '@tanstack/react-router';
+import "./styles.css";
+import { getCookie, setCookie } from '@/lib/services/storage';
 
 const cameraPos = [
   3.2, 3.6, 3.2
 ];
 const Home = () => {
   const { height } = useElementHeight();
+  const [colorValue, setColorValue] = useState<string>(getCookie("website-primary") ?? "#00ff00");
+
+  const handleValueChange = (details: ColorPickerValueChangeDetails) => {
+    setColorValue(details.value.toString("hex"));
+    setCookie("website-primary", details.value.toString("hex"));
+  };
+
   return <div style={{ position: "relative" }}>
+    <div style={{ padding: "1rem 1.5rem", zIndex: 10, position: "relative" }}>
+      <ColorPicker.Root value={parseColor(colorValue)} onValueChange={handleValueChange}>
+        <ColorPicker.HiddenInput />
+        <ColorPicker.Label />
+        <ColorPicker.Control>
+          <ColorPicker.Trigger />
+        </ColorPicker.Control>
+        <ColorPicker.Positioner>
+          <ColorPicker.Content>
+            <ColorPicker.Area />
+            <ColorPicker.EyeDropper />
+            <ColorPicker.Sliders />
+            <ColorPicker.SwatchGroup>
+              <ColorPicker.SwatchTrigger value={colorValue}>
+                <ColorPicker.Swatch value={colorValue} boxSize="6" />
+              </ColorPicker.SwatchTrigger>
+            </ColorPicker.SwatchGroup>
+          </ColorPicker.Content>
+        </ColorPicker.Positioner>
+      </ColorPicker.Root>
+    </div>
     {false && <ObjViewer>
       <ObjModel
         url="/assets/shark.obj"
@@ -29,7 +67,7 @@ const Home = () => {
         <VerticesModel
           url="/assets/mountain.obj"
           normalColor="#000000"
-          hoverColor="#00ff00"
+          hoverColor={colorValue.toString()}
           pointSize={.022}
           rotation={[0, .2, 0]}
           fadeSpeed={.01}
@@ -39,7 +77,20 @@ const Home = () => {
       </VerticesViewer>
     </div>
     <div className="home">
-      test
+      <div style={{ display: 'flex', justifyContent: "right", padding: "4% 0px" }}>
+        <div style={{ display: "flex", gap: "3rem", flexDirection: "column", textAlign: "right" }}>
+          <AnimateUnderline alignment='right' hoverColor={colorValue}>
+            <Text textStyle="h1" as="h1">
+              <Link to="/projects" from="/" style={{ position: 'relative', zIndex: 5 }}>PROJECTS</Link>
+            </Text>
+          </AnimateUnderline>
+          <AnimateUnderline alignment='right' hoverColor={colorValue}>
+            <Text textStyle="h2" as="h2">
+              <Link to="/projects" from="/" style={{ position: 'relative', zIndex: 5 }}>RECREATION</Link>
+            </Text>
+          </AnimateUnderline>
+        </div>
+      </div>
     </div>
   </div>
 };

@@ -16,7 +16,7 @@ const pwaOptions: Partial<VitePWAOptions> = {
   registerType: 'autoUpdate',
   manifest: {
     short_name: 'vite-react-chakra-starter',
-    name: 'Vite React App Template',
+    name: 'Thomas Goodwin Portfolio',
     lang: 'en',
     start_url: '/',
     background_color: '#FFFFFF',

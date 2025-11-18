@@ -3,8 +3,8 @@ const APP_NAME = 'vite-react-chakra-starter';
 export const Meta = () => {
   return (
     <>
-      <title>Vite React Chakra Starter</title>
-      <meta name="description" content="Vite React Chakra Starter Template" />
+      <title>Thomas Goodwin</title>
+      <meta name="description" content="Thomas Goodwin Portfolio" />
 
       <meta name="application-name" content={APP_NAME} />
       <meta name="apple-mobile-web-app-capable" content="yes" />

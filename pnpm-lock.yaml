@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@chakra-ui/color-mode':
+        specifier: ^2.2.0
+        version: 2.2.0(react@19.2.0)
       '@chakra-ui/react':
         specifier: ^3.28.0
         version: 3.28.0(@emotion/react@11.14.0(@types/react@19.2.2)(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -17,6 +20,9 @@ importers:
       '@fontsource-variable/plus-jakarta-sans':
         specifier: ^5.2.8
         version: 5.2.8
+      '@fontsource/stack-sans-notch':
+        specifier: ^5.2.1
+        version: 5.2.1
       '@react-three/drei':
         specifier: ^10.7.6
         version: 10.7.6(@react-three/fiber@9.4.0(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(three@0.181.0))(@types/react@19.2.2)(@types/three@0.181.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(three@0.181.0)
@@ -756,6 +762,16 @@ packages:
     peerDependencies:
       '@chakra-ui/react': '>=3.0.0-next.0'
 
+  '@chakra-ui/color-mode@2.2.0':
+    resolution: {integrity: sha512-niTEA8PALtMWRI9wJ4LL0CSBDo8NBfLNp4GD6/0hstcm3IlbBHTVKxN6HwSaoNYfphDQLxCjT4yG+0BJA5tFpg==}
+    peerDependencies:
+      react: '>=18'
+
+  '@chakra-ui/react-use-safe-layout-effect@2.1.0':
+    resolution: {integrity: sha512-Knbrrx/bcPwVS1TorFdzrK/zWA8yuU/eaXDkNj24IrKoRlQrSBFarcgAEzlCHtzuhufP3OULPkELTzz91b0tCw==}
+    peerDependencies:
+      react: '>=18'
+
   '@chakra-ui/react@3.28.0':
     resolution: {integrity: sha512-Rm9Fppqmc4NleAhNhbvE/fiA6IfSYpzRE5IQcQ39v27yFmWwSC8M1q7E5CYF36JJp1jmMG3CBPv4JRox/WESBg==}
     peerDependencies:
@@ -1130,6 +1146,9 @@ packages:
 
   '@fontsource-variable/plus-jakarta-sans@5.2.8':
     resolution: {integrity: sha512-iQecBizIdZxezODNHzOn4SvvRMrZL/S8k4MEXGDynCmUrImVW0VmX+tIAMqnADwH4haXlHSXqMgU6+kcfBQJdw==}
+
+  '@fontsource/stack-sans-notch@5.2.1':
+    resolution: {integrity: sha512-3Vae9Zc4jtfYXlCzY2F0L1eSWZ9KzPXPvVWEH8QWREfx/qzyoCIihxdY/IhVqwUe6Kc3sHdCoZIL7Sec/2lwmA==}
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -6261,6 +6280,15 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@chakra-ui/color-mode@2.2.0(react@19.2.0)':
+    dependencies:
+      '@chakra-ui/react-use-safe-layout-effect': 2.1.0(react@19.2.0)
+      react: 19.2.0
+
+  '@chakra-ui/react-use-safe-layout-effect@2.1.0(react@19.2.0)':
+    dependencies:
+      react: 19.2.0
+
   '@chakra-ui/react@3.28.0(@emotion/react@11.14.0(@types/react@19.2.2)(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
       '@ark-ui/react': 5.26.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -6649,6 +6677,8 @@ snapshots:
   '@floating-ui/utils@0.2.10': {}
 
   '@fontsource-variable/plus-jakarta-sans@5.2.8': {}
+
+  '@fontsource/stack-sans-notch@5.2.1': {}
 
   '@humanfs/core@0.19.1':
     optional: true
