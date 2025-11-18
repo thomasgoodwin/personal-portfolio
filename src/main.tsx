@@ -10,7 +10,9 @@ import { queryClient } from '@/lib/services/constants';
 import { routeTree } from './routeTree.gen';
 
 // fonts
-import '@fontsource-variable/plus-jakarta-sans';
+import '@fontsource/stack-sans-notch';
+
+import "./index.css";
 
 const router = createRouter({
   routeTree,
