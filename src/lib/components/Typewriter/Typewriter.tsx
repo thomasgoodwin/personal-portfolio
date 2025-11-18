@@ -13,7 +13,7 @@ type TypewriterProps = {
   style?: object;
 };
 
-function getKeyboardCoordinate(key: string): Array<number> {
+const getKeyboardCoordinate = (key: string): Array<number> => {
   return keyboardSectionAssignment[key as keyof typeof keyboardSectionAssignment] ?? undefined;
 }
 

@@ -105,11 +105,9 @@ export const VerticesModel: React.FC<VerticesModelProps> = ({
     colorAttr.needsUpdate = true;
   });
 
-  return (
-    <points ref={pointsRef} geometry={geometry}>
-      <pointsMaterial size={pointSize} vertexColors />
-    </points>
-  );
+  return <points ref={pointsRef} geometry={geometry}>
+    <pointsMaterial size={pointSize} vertexColors />
+  </points>
 };
 
 interface VerticesViewerProps {
@@ -123,14 +121,11 @@ export const VerticesViewer = ({
   height,
   children
 }: VerticesViewerProps) => {
-  console.log(height)
-  return (
-    <Canvas camera={camera} style={{ height: height ?? 700 }}>
-      <ambientLight intensity={1} />
-      <directionalLight position={[5, 5, 5]} intensity={1} />
-      <Suspense fallback={null}>
-        {children}
-      </Suspense>
-    </Canvas>
-  );
+  return <Canvas camera={camera} style={{ height: height ?? 700 }}>
+    <ambientLight intensity={1} />
+    <directionalLight position={[5, 5, 5]} intensity={1} />
+    <Suspense fallback={null}>
+      {children}
+    </Suspense>
+  </Canvas>
 }
