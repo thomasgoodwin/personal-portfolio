@@ -79,7 +79,7 @@ const Home = () => {
     <div className="home">
       <div className="home-title">
         <Text textStyle="h1" as="h1">Thomas Goodwin</Text>
-        <Text textStyle="h2" as="p">Software Developer</Text>
+        <Text textStyle="h2" as="p" ml={8}>Software Developer</Text>
       </div>
       <div className="home-nav">
         <div className="home-nav-links">
