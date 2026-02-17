@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import React, { useRef, useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useRef, useEffect, useMemo, Suspense } from 'react';
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import { OBJLoader } from "three-stdlib";
 
@@ -24,20 +24,29 @@ export const VerticesModel: React.FC<VerticesModelProps> = ({
   vertexFlickerPercentage = 50,
   shiftInterval = 2000
 }) => {
-  const hoverColorThree = new THREE.Color(hoverColor);
-  const normalColorThree = new THREE.Color(normalColor);
+  const hoverColorRef = useRef(new THREE.Color(hoverColor));
+  const normalColorRef = useRef(new THREE.Color(normalColor));
   const obj = useLoader(OBJLoader, url);
   const pointsRef = useRef<THREE.Points>(null);
-  const [calculateHighlightedPoints, setCalculateHighlightedPoints] = useState(true);
-  const [highlightedPoints, setHighlightedPoints] = useState<number[]>([]);
+  const highlightedSet = useRef<Set<number>>(new Set());
+  const needsRecalc = useRef(true);
+  const tmpColor = useRef(new THREE.Color());
+
+  useEffect(() => {
+    hoverColorRef.current.set(hoverColor!);
+  }, [hoverColor]);
+
+  useEffect(() => {
+    normalColorRef.current.set(normalColor!);
+  }, [normalColor]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCalculateHighlightedPoints(true);
+      needsRecalc.current = true;
     }, shiftInterval);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [shiftInterval]);
 
   const geometry = useMemo(() => {
     const merged = new THREE.BufferGeometry();
@@ -66,43 +75,43 @@ export const VerticesModel: React.FC<VerticesModelProps> = ({
 
   useFrame(() => {
     const points = pointsRef.current;
-    if (!points) {
-      return
-    };
+    if (!points) return;
 
-    const positions = geometry.getAttribute("position");
-    const colorAttr = geometry.getAttribute("color") as THREE.BufferAttribute;
+    const colorArr = (geometry.getAttribute("color") as THREE.BufferAttribute).array as Float32Array;
+    const vertexCount = colorArr.length / 3;
 
     points.rotation.x += rotation[0] * .01;
     points.rotation.y += rotation[1] * .01;
     points.rotation.z += rotation[2] * .01;
-    const tmpColor = new THREE.Color();
 
-    if (calculateHighlightedPoints) {
-      const highlightCount = Math.floor(positions.count * vertexFlickerPercentage);
-      const newHighlightedPoints = new Array(highlightCount).fill(0).map(() => Math.floor(Math.random() * positions.count));
-      setHighlightedPoints(newHighlightedPoints);
-      setCalculateHighlightedPoints(false);
+    if (needsRecalc.current) {
+      const highlightCount = Math.floor(vertexCount * vertexFlickerPercentage);
+      highlightedSet.current.clear();
+      for (let i = 0; i < highlightCount; i++) {
+        highlightedSet.current.add(Math.floor(Math.random() * vertexCount));
+      }
+      needsRecalc.current = false;
     }
-    for (let i = 0; i < positions.count; i++) {
-      const target = normalColorThree;
-      tmpColor.setRGB(
-        THREE.MathUtils.lerp(colorAttr.getX(i), target.r, fadeSpeed),
-        THREE.MathUtils.lerp(colorAttr.getY(i), target.g, fadeSpeed),
-        THREE.MathUtils.lerp(colorAttr.getZ(i), target.b, fadeSpeed)
+
+    const normal = normalColorRef.current;
+    const hover = hoverColorRef.current;
+    const highlighted = highlightedSet.current;
+    const tmp = tmpColor.current;
+    const speed = fadeSpeed;
+
+    for (let i = 0; i < vertexCount; i++) {
+      const idx = i * 3;
+      const target = highlighted.has(i) ? hover : normal;
+      tmp.setRGB(
+        THREE.MathUtils.lerp(colorArr[idx], target.r, speed),
+        THREE.MathUtils.lerp(colorArr[idx + 1], target.g, speed),
+        THREE.MathUtils.lerp(colorArr[idx + 2], target.b, speed)
       );
-      colorAttr.setXYZ(i, tmpColor.r, tmpColor.g, tmpColor.b);
+      colorArr[idx] = tmp.r;
+      colorArr[idx + 1] = tmp.g;
+      colorArr[idx + 2] = tmp.b;
     }
-    for (let i = 0; i < highlightedPoints.length; i++) {
-      const target = hoverColorThree;
-      tmpColor.setRGB(
-        THREE.MathUtils.lerp(colorAttr.getX(highlightedPoints[i]), target.r, fadeSpeed),
-        THREE.MathUtils.lerp(colorAttr.getY(highlightedPoints[i]), target.g, fadeSpeed),
-        THREE.MathUtils.lerp(colorAttr.getZ(highlightedPoints[i]), target.b, fadeSpeed)
-      );
-      colorAttr.setXYZ(highlightedPoints[i], tmpColor.r, tmpColor.g, tmpColor.b);
-    }
-    colorAttr.needsUpdate = true;
+    (geometry.getAttribute("color") as THREE.BufferAttribute).needsUpdate = true;
   });
 
   return <points ref={pointsRef} geometry={geometry}>

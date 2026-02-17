@@ -77,16 +77,20 @@ const Home = () => {
       </VerticesViewer>
     </div>
     <div className="home">
+      <div className="home-title">
+        <Text textStyle="h1" as="h1">Thomas Goodwin</Text>
+        <Text textStyle="h2" as="p">Software Developer</Text>
+      </div>
       <div style={{ display: 'flex', justifyContent: "right", padding: "4% 0px" }}>
         <div style={{ display: "flex", gap: "3rem", flexDirection: "column", textAlign: "right" }}>
           <AnimateUnderline alignment='right' hoverColor={colorValue}>
             <Text textStyle="h1" as="h1">
-              <Link to="/projects" from="/" style={{ position: 'relative', zIndex: 5 }}>PROJECTS</Link>
+              <Link to="/projects" from="/" style={{ position: 'relative', zIndex: 5, textTransform: "uppercase" }}>Projects</Link>
             </Text>
           </AnimateUnderline>
           <AnimateUnderline alignment='right' hoverColor={colorValue}>
             <Text textStyle="h2" as="h2">
-              <Link to="/projects" from="/" style={{ position: 'relative', zIndex: 5 }}>RECREATION</Link>
+              <a href="https://tomie.games/" style={{ position: 'relative', zIndex: 5, textTransform: "uppercase" }}>Games</a>
             </Text>
           </AnimateUnderline>
         </div>
