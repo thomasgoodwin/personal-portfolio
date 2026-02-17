@@ -1,7 +1,32 @@
 import * as THREE from 'three';
-import React, { useRef, useEffect, useMemo, Suspense } from 'react';
-import { Canvas, useFrame, useLoader } from '@react-three/fiber';
-import { OBJLoader } from "three-stdlib";
+import React, { useRef, useEffect, useMemo, useState, Suspense } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+
+const vertexShader = `
+  attribute float aPrevHighlight;
+  attribute float aHighlight;
+  uniform float uFadeProgress;
+  uniform float uPointSize;
+  uniform vec3 uNormalColor;
+  uniform vec3 uHoverColor;
+  varying vec3 vColor;
+
+  void main() {
+    float h = mix(aPrevHighlight, aHighlight, uFadeProgress);
+    vColor = mix(uNormalColor, uHoverColor, h);
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = uPointSize * (300.0 / -mvPosition.z);
+    gl_Position = projectionMatrix * mvPosition;
+  }
+`;
+
+const fragmentShader =`
+  varying vec3 vColor;
+
+  void main() {
+    gl_FragColor = vec4(vColor, 1.0);
+  }
+`;
 
 interface VerticesModelProps {
   url: string;
@@ -20,103 +45,91 @@ export const VerticesModel: React.FC<VerticesModelProps> = ({
   hoverColor,
   normalColor,
   fadeSpeed = .025,
-  pointSize = .03,
+  pointSize = .05,
   vertexFlickerPercentage = 50,
   shiftInterval = 2000
 }) => {
-  const hoverColorRef = useRef(new THREE.Color(hoverColor));
-  const normalColorRef = useRef(new THREE.Color(normalColor));
-  const obj = useLoader(OBJLoader, url);
   const pointsRef = useRef<THREE.Points>(null);
-  const highlightedSet = useRef<Set<number>>(new Set());
-  const needsRecalc = useRef(true);
-  const tmpColor = useRef(new THREE.Color());
+  const fadeProgressRef = useRef(0);
+  const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
+
+  const material = useMemo(() => new THREE.ShaderMaterial({
+    vertexShader,
+    fragmentShader,
+    uniforms: {
+      uNormalColor: { value: new THREE.Color(normalColor) },
+      uHoverColor: { value: new THREE.Color(hoverColor) },
+      uFadeProgress: { value: 0 },
+      uPointSize: { value: pointSize },
+    },
+  }), []);
 
   useEffect(() => {
-    hoverColorRef.current.set(hoverColor!);
-  }, [hoverColor]);
+    let cancelled = false;
+    fetch(url)
+      .then(r => r.arrayBuffer())
+      .then(buf => {
+        if (cancelled) return;
+        const positions = new Float32Array(buf);
+        const vertexCount = positions.length / 3;
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geom.setAttribute('aPrevHighlight', new THREE.BufferAttribute(new Float32Array(vertexCount), 1));
+        geom.setAttribute('aHighlight', new THREE.BufferAttribute(new Float32Array(vertexCount), 1));
+        setGeometry(geom);
+      });
+    return () => { cancelled = true; };
+  }, [url]);
 
   useEffect(() => {
-    normalColorRef.current.set(normalColor!);
-  }, [normalColor]);
+    material.uniforms.uHoverColor.value.set(hoverColor);
+  }, [hoverColor, material]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      needsRecalc.current = true;
-    }, shiftInterval);
+    material.uniforms.uNormalColor.value.set(normalColor);
+  }, [normalColor, material]);
 
-    return () => clearInterval(interval);
-  }, [shiftInterval]);
+  useEffect(() => {
+    if (!geometry) return;
+    const recalc = () => {
+      const prevAttr = geometry.getAttribute('aPrevHighlight') as THREE.BufferAttribute;
+      const attr = geometry.getAttribute('aHighlight') as THREE.BufferAttribute;
+      const prevArr = prevAttr.array as Float32Array;
+      const arr = attr.array as Float32Array;
+      const count = arr.length;
 
-  const geometry = useMemo(() => {
-    const merged = new THREE.BufferGeometry();
-    const positions: number[] = [];
-
-    obj.traverse((child: any) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const geom = (child as THREE.Mesh).geometry as THREE.BufferGeometry;
-        const pos = geom.getAttribute('position');
-        for (let i = 0; i < pos.count; i++) {
-          positions.push(pos.getX(i), pos.getY(i), pos.getZ(i));
-        }
+      prevArr.set(arr);
+      prevAttr.needsUpdate = true;
+      arr.fill(0);
+      const highlightCount = Math.floor(count * vertexFlickerPercentage);
+      for (let i = 0; i < highlightCount; i++) {
+        arr[Math.floor(Math.random() * count)] = 1;
       }
-    });
-
-    merged.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-
-    const colors = new Float32Array(positions.length);
-    const color = new THREE.Color(normalColor);
-    for (let i = 0; i < positions.length / 3; i++) {
-      color.toArray(colors, i * 3);
-    }
-    merged.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    return merged;
-  }, [obj]);
+      attr.needsUpdate = true;
+      fadeProgressRef.current = 0;
+    };
+    recalc();
+    const id = setInterval(recalc, shiftInterval);
+    return () => clearInterval(id);
+  }, [geometry, shiftInterval, vertexFlickerPercentage]);
 
   useFrame(() => {
     const points = pointsRef.current;
     if (!points) return;
 
-    const colorArr = (geometry.getAttribute("color") as THREE.BufferAttribute).array as Float32Array;
-    const vertexCount = colorArr.length / 3;
-
     points.rotation.x += rotation[0] * .01;
     points.rotation.y += rotation[1] * .01;
     points.rotation.z += rotation[2] * .01;
 
-    if (needsRecalc.current) {
-      const highlightCount = Math.floor(vertexCount * vertexFlickerPercentage);
-      highlightedSet.current.clear();
-      for (let i = 0; i < highlightCount; i++) {
-        highlightedSet.current.add(Math.floor(Math.random() * vertexCount));
-      }
-      needsRecalc.current = false;
-    }
-
-    const normal = normalColorRef.current;
-    const hover = hoverColorRef.current;
-    const highlighted = highlightedSet.current;
-    const tmp = tmpColor.current;
-    const speed = fadeSpeed;
-
-    for (let i = 0; i < vertexCount; i++) {
-      const idx = i * 3;
-      const target = highlighted.has(i) ? hover : normal;
-      tmp.setRGB(
-        THREE.MathUtils.lerp(colorArr[idx], target.r, speed),
-        THREE.MathUtils.lerp(colorArr[idx + 1], target.g, speed),
-        THREE.MathUtils.lerp(colorArr[idx + 2], target.b, speed)
-      );
-      colorArr[idx] = tmp.r;
-      colorArr[idx + 1] = tmp.g;
-      colorArr[idx + 2] = tmp.b;
-    }
-    (geometry.getAttribute("color") as THREE.BufferAttribute).needsUpdate = true;
+    fadeProgressRef.current += (1 - fadeProgressRef.current) * fadeSpeed;
+    material.uniforms.uFadeProgress.value = fadeProgressRef.current;
   });
 
-  return <points ref={pointsRef} geometry={geometry}>
-    <pointsMaterial size={pointSize} vertexColors />
-  </points>
+  if (!geometry) return null;
+
+  return (
+    <points ref={pointsRef} geometry={geometry} material={material} />
+  );
 };
 
 interface VerticesViewerProps {

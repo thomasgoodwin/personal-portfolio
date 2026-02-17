@@ -65,11 +65,11 @@ const Home = () => {
     >
       <VerticesViewer camera={{ position: cameraPos, fov: 65 }} height={height}>
         <VerticesModel
-          url="/assets/mountain.obj"
+          url="/assets/mountain.bin"
           normalColor="#000000"
           hoverColor={colorValue.toString()}
-          pointSize={.022}
-          rotation={[0, .2, 0]}
+          pointSize={.05}
+          rotation={[0, .05, 0]}
           fadeSpeed={.01}
           vertexFlickerPercentage={.33}
           shiftInterval={2200}
@@ -81,8 +81,8 @@ const Home = () => {
         <Text textStyle="h1" as="h1">Thomas Goodwin</Text>
         <Text textStyle="h2" as="p">Software Developer</Text>
       </div>
-      <div style={{ display: 'flex', justifyContent: "right", padding: "4% 0px" }}>
-        <div style={{ display: "flex", gap: "3rem", flexDirection: "column", textAlign: "right" }}>
+      <div className="home-nav">
+        <div className="home-nav-links">
           <AnimateUnderline alignment='right' hoverColor={colorValue}>
             <Text textStyle="h1" as="h1">
               <Link to="/projects" from="/" style={{ position: 'relative', zIndex: 5, textTransform: "uppercase" }}>Projects</Link>

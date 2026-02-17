@@ -29,3 +29,35 @@
   opacity: 0;
   animation: slide-in-left 0.6s ease-out 0.15s both;
 }
+
+.home-nav {
+  display: flex;
+  justify-content: right;
+  padding: 4% 0;
+}
+
+.home-nav-links {
+  display: flex;
+  gap: 3rem;
+  flex-direction: column;
+  text-align: right;
+}
+
+@media (max-width: 600px) {
+  .home {
+    margin: 0 4%;
+  }
+
+  .home-title {
+    padding: 8% 0;
+  }
+
+  .home-nav {
+    justify-content: left;
+  }
+
+  .home-nav-links {
+    text-align: left;
+    gap: 1.5rem;
+  }
+}
