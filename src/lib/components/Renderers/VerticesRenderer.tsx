@@ -90,7 +90,9 @@ export const VerticesModel: React.FC<VerticesModelProps> = ({
   }, [normalColor, material]);
 
   useEffect(() => {
-    if (!geometry) return;
+    if (!geometry) {
+      return;
+    }
     const recalc = () => {
       const prevAttr = geometry.getAttribute('aPrevHighlight') as THREE.BufferAttribute;
       const attr = geometry.getAttribute('aHighlight') as THREE.BufferAttribute;
@@ -115,7 +117,9 @@ export const VerticesModel: React.FC<VerticesModelProps> = ({
 
   useFrame(() => {
     const points = pointsRef.current;
-    if (!points) return;
+    if (!points) {
+      return;
+    }
 
     points.rotation.x += rotation[0] * .01;
     points.rotation.y += rotation[1] * .01;
@@ -125,7 +129,9 @@ export const VerticesModel: React.FC<VerticesModelProps> = ({
     material.uniforms.uFadeProgress.value = fadeProgressRef.current;
   });
 
-  if (!geometry) return null;
+  if (!geometry) {
+    return null;
+  }
 
   return (
     <points ref={pointsRef} geometry={geometry} material={material} />
