@@ -10,7 +10,7 @@ export const Footer = () => {
       alignSelf="flex-end"
       justifyContent="center"
     >
-      <Text fontSize="xs">
+      <Text fontSize="xs" zIndex={10}>
         <Link
           href="https://www.linkedin.com/in/thomas-g-goodwin/"
           target="_blank"

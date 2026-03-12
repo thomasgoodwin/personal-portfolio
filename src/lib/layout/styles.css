@@ -2,6 +2,12 @@
   padding: 2rem;
 }
 .frame {
-  border: .5px solid rgba(255, 255, 255, .5); 
+  border: .5px solid rgba(255, 255, 255, .5);
   margin: 1rem 2rem;
+}
+
+@media (max-width: 48em) {
+  .frame {
+    margin: 0;
+  }
 }

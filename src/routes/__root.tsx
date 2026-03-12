@@ -23,7 +23,7 @@ export const Route = createRootRoute({
       },
       {
         name: 'viewport',
-        content: 'width=device-width, initial-scale=1.0',
+        content: 'width=device-width, initial-scale=1.0, viewport-fit=cover',
       },
       {
         name: 'application-name',

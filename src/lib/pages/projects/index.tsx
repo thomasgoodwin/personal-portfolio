@@ -1,7 +1,10 @@
+import { Box } from "@chakra-ui/react";
+import "./styles.css";
+
 const Projects = () => {
-  return <div>
-    test
-  </div>
+  return <Box className="projects-container" overflowY={"scroll"}>
+    In Progress...
+  </Box>
 }
 
 export default Projects;
