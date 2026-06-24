@@ -36,8 +36,10 @@ const Home = () => {
         <ColorPicker.Positioner>
           <ColorPicker.Content>
             <ColorPicker.Area />
-            <ColorPicker.EyeDropper />
-            <ColorPicker.Sliders />
+            <ColorPicker.ChannelSlider channel="hue">
+              <ColorPicker.ChannelSliderTrack />
+              <ColorPicker.ChannelSliderThumb />
+            </ColorPicker.ChannelSlider>
             <ColorPicker.SwatchGroup>
               <ColorPicker.SwatchTrigger value={colorValue}>
                 <ColorPicker.Swatch value={colorValue} boxSize="6" />
