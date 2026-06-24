@@ -5,6 +5,8 @@ import { Canvas, useFrame } from '@react-three/fiber';
 const vertexShader = `
   attribute float aPrevHighlight;
   attribute float aHighlight;
+  attribute vec3 aHoverColor;
+  attribute float aHoverStrength;
   uniform float uFadeProgress;
   uniform float uPointSize;
   uniform vec3 uNormalColor;
@@ -14,6 +16,7 @@ const vertexShader = `
   void main() {
     float h = mix(aPrevHighlight, aHighlight, uFadeProgress);
     vColor = mix(uNormalColor, uHoverColor, h);
+    vColor = mix(vColor, aHoverColor, aHoverStrength);
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     gl_PointSize = uPointSize * (300.0 / -mvPosition.z);
     gl_Position = projectionMatrix * mvPosition;
@@ -37,6 +40,8 @@ interface VerticesModelProps {
   pointSize?: number;
   vertexFlickerPercentage?: number;
   shiftInterval?: number;
+  hoverRiseSpeed?: number;
+  hoverFadeSpeed?: number;
 }
 
 export const VerticesModel: React.FC<VerticesModelProps> = ({
@@ -47,10 +52,13 @@ export const VerticesModel: React.FC<VerticesModelProps> = ({
   fadeSpeed = .025,
   pointSize = .05,
   vertexFlickerPercentage = 50,
-  shiftInterval = 2000
+  shiftInterval = 2000,
+  hoverRiseSpeed = .4,
+  hoverFadeSpeed = .05
 }) => {
   const pointsRef = useRef<THREE.Points>(null);
   const fadeProgressRef = useRef(0);
+  const hoverStateRef = useRef<Map<number, number>>(new Map());
   const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
 
   const material = useMemo(() => new THREE.ShaderMaterial({
@@ -76,6 +84,8 @@ export const VerticesModel: React.FC<VerticesModelProps> = ({
         geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         geom.setAttribute('aPrevHighlight', new THREE.BufferAttribute(new Float32Array(vertexCount), 1));
         geom.setAttribute('aHighlight', new THREE.BufferAttribute(new Float32Array(vertexCount), 1));
+        geom.setAttribute('aHoverColor', new THREE.BufferAttribute(new Float32Array(vertexCount * 3), 3));
+        geom.setAttribute('aHoverStrength', new THREE.BufferAttribute(new Float32Array(vertexCount), 1));
         setGeometry(geom);
       });
     return () => { cancelled = true; };
@@ -127,14 +137,51 @@ export const VerticesModel: React.FC<VerticesModelProps> = ({
 
     fadeProgressRef.current += (1 - fadeProgressRef.current) * fadeSpeed;
     material.uniforms.uFadeProgress.value = fadeProgressRef.current;
+
+    const map = hoverStateRef.current;
+    if (geometry && map.size > 0) {
+      const strAttr = geometry.getAttribute('aHoverStrength') as THREE.BufferAttribute;
+      const arr = strAttr.array as Float32Array;
+      map.forEach((phase, i) => {
+        if (phase === 1) {
+          arr[i] += (1 - arr[i]) * hoverRiseSpeed;
+          if (arr[i] > 0.95) {
+            map.set(i, 2);
+          }
+        } else {
+          arr[i] += (0 - arr[i]) * hoverFadeSpeed;
+          if (arr[i] < 0.01) {
+            arr[i] = 0;
+            map.delete(i);
+          }
+        }
+      });
+      strAttr.needsUpdate = true;
+    }
   });
+
+  const handlePointerMove = (e: any) => {
+    if (e.index == null || !geometry) {
+      return;
+    }
+    const i = e.index;
+    const map = hoverStateRef.current;
+    if (map.has(i)) {
+      return;
+    }
+    const colAttr = geometry.getAttribute('aHoverColor') as THREE.BufferAttribute;
+    const c = new THREE.Color().setHSL(Math.random(), 1, 0.5);
+    colAttr.setXYZ(i, c.r, c.g, c.b);
+    colAttr.needsUpdate = true;
+    map.set(i, 1);
+  };
 
   if (!geometry) {
     return null;
   }
 
   return (
-    <points ref={pointsRef} geometry={geometry} material={material} />
+    <points ref={pointsRef} geometry={geometry} material={material} onPointerMove={handlePointerMove} />
   );
 };
 
@@ -149,7 +196,7 @@ export const VerticesViewer = ({
   height,
   children
 }: VerticesViewerProps) => {
-  return <Canvas camera={camera} style={{ height: height ?? 700 }}>
+  return <Canvas camera={camera} raycaster={{ params: { Points: { threshold: 0.09 } } as THREE.RaycasterParameters }} style={{ height: height ?? 700 }}>
     <ambientLight intensity={1} />
     <directionalLight position={[5, 5, 5]} intensity={1} />
     <Suspense fallback={null}>
