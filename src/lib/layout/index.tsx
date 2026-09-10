@@ -15,7 +15,7 @@ export const Layout = ({ children }: LayoutProps) => {
       <Meta />
       <Flex flexDirection="column" paddingY={{ base: 0, md: 4 }} minHeight="100vh">
         <Box className="frame" flex="1" display="flex" flexDirection="column" overflow={"hidden"}>
-          <Box as="main" flex="1">
+          <Box as="main" flex="1" minHeight={0} overflowY="auto">
             {children}
           </Box>
           <Box display={{ base: 'block', md: 'none' }} style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
