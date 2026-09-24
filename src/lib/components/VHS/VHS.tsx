@@ -37,6 +37,22 @@ export interface VHSOptions {
   saturation?: number;
   /** Extra brightness multiplier applied at the end. */
   exposure?: number;
+  /** Overall strength of the glitch bursts (0 to 2). 0 disables them. */
+  glitch?: number;
+  /** Seconds between glitch bursts. 0 keeps the glitch running constantly. */
+  glitchInterval?: number;
+  /** How long each glitch burst lasts in seconds. */
+  glitchDuration?: number;
+  /** Number of horizontal slices the tear snaps to. Lower is chunkier. */
+  glitchSlices?: number;
+  /** How far torn slices shift sideways, in CSS pixels. */
+  glitchShift?: number;
+  /** Chromatic RGB split during bursts, in CSS pixels. */
+  glitchRgbShift?: number;
+  /** Amount of corrupted block artifacts during bursts (0 to 1). */
+  glitchBlocks?: number;
+  /** Analog noise and scanline flicker during bursts (0 to 1). */
+  glitchNoise?: number;
 }
 
 export interface VHSElements {
@@ -46,11 +62,15 @@ export interface VHSElements {
   content: HTMLElement;
   /** Canvas the WebGL effect renders to. */
   output: HTMLCanvasElement;
+  /** Optional element holding a live canvas that is composited behind the content. */
+  backdropRoot?: HTMLElement | null;
 }
 
 export interface VHSInstance {
   /** Update effect options live. */
   setOptions: (options: VHSOptions) => void;
+  /** Fire a glitch burst right now. */
+  burst: () => void;
   /** Re-read canvas size. Call when the element is resized. */
   resize: () => void;
   /** Stop the loop and release all GPU resources. */
@@ -60,19 +80,27 @@ export interface VHSInstance {
 const DEFAULTS: Required<VHSOptions> = {
   speed: 0.5,
   wave: 1,
-  jitter: 0.25,
+  jitter: 0.1,
   crease: 0.1,
-  switching: 0.05,
+  switching: 0.02,
   switchingHeight: 0.02,
   bloom: 0.4,
   aberration: 2,
   acBeat: 1,
-  grain: 0.1,
+  grain: 0.03,
   scanlines: 0.1,
   vignette: 0,
   barrel: 0,
   saturation: 1,
   exposure: 1,
+  glitch: 1,
+  glitchInterval: 15,
+  glitchDuration: 0.4,
+  glitchSlices: 24,
+  glitchShift: 30,
+  glitchRgbShift: 4,
+  glitchBlocks: 0.3,
+  glitchNoise: 0.1,
 };
 
 type PaintableCanvas = HTMLCanvasElement & {
@@ -98,6 +126,9 @@ precision highp float;
 in vec2 vUv;
 out vec4 outColor;
 uniform sampler2D uContent;
+uniform sampler2D uBackdrop;
+uniform float uHasBackdrop;
+uniform vec2 uBackdropScale;
 uniform vec2 uResolution;
 uniform float uTime;
 uniform float uWave;
@@ -117,11 +148,24 @@ uniform float uBarrel;
 uniform vec3 uBezel;
 uniform float uCreaseNoise;
 uniform float uMaxX;
+uniform float uSeed;
+uniform float uAmp;
+uniform float uSlices;
+uniform float uShift;
+uniform float uRgbShift;
+uniform float uBlocks;
+uniform float uGNoise;
 
 #define PI 3.14159265
 
 float hash (vec2 v) {
   return fract(sin(dot(v, vec2(89.44, 19.36))) * 22189.22);
+}
+
+float hash12 (vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
 }
 
 float iHash (vec2 v, vec2 r) {
@@ -137,7 +181,7 @@ float iHash (vec2 v, vec2 r) {
 float noise (vec2 v) {
   float sum = 0.0;
   float s = 2.0;
-  for (int i = 1; i < 7; i++) {
+  for (int i = 1; i < 5; i++) {
     sum += iHash(v + vec2(i), vec2(2.0 * s)) / s;
     s *= 2.0;
   }
@@ -147,7 +191,17 @@ float noise (vec2 v) {
 vec4 tape (vec2 p) {
   p.x = clamp(p.x, 0.0005, uMaxX - 0.0005);
   p.y = clamp(p.y, 0.0005, 0.9995);
-  return texture(uContent, vec2(p.x, 1.0 - p.y));
+  vec2 st = vec2(p.x, 1.0 - p.y);
+  vec4 c = texture(uContent, st);
+  if (uHasBackdrop < 0.5) {
+    return c;
+  }
+  vec2 bs = st * uBackdropScale;
+  float inside = step(bs.x, 1.0) * step(bs.y, 1.0);
+  vec4 b = texture(uBackdrop, min(bs, vec2(1.0))) * inside;
+  float a = c.a + b.a * (1.0 - c.a);
+  vec3 rgb = (c.rgb * c.a + b.rgb * b.a * (1.0 - c.a)) / max(a, 1e-4);
+  return vec4(rgb, a);
 }
 
 void main () {
@@ -172,6 +226,29 @@ void main () {
 
   vec2 uvn = uv;
   float t = uTime;
+  float e = uAmp;
+
+  if (e > 0.001) {
+    float band = floor(uv.y * uSlices);
+    float pick = hash12(vec2(band, uSeed));
+    float tear = step(1.0 - 0.3 * min(e, 1.0), pick);
+    float dir = hash12(vec2(band, uSeed + 13.0)) * 2.0 - 1.0;
+    uvn.x += tear * dir * e * uShift / uResolution.x;
+
+    float sub = floor(uv.y * uSlices * 7.0);
+    float micro = hash12(vec2(sub, uSeed + 29.0));
+    uvn.x += (micro - 0.5) * e * uGNoise * 3.0 / uResolution.x;
+
+    vec2 cell = floor(uvn * vec2(10.0, uSlices * 0.5));
+    float br = hash12(cell + uSeed * 0.0173);
+    if (br > 1.0 - 0.14 * uBlocks * min(e, 1.0)) {
+      vec2 jump = vec2(
+        hash12(cell + uSeed + 3.1) - 0.5,
+        hash12(cell + uSeed + 7.7) - 0.5
+      );
+      uvn += jump * vec2(0.08, 0.02) * e;
+    }
+  }
 
   float lineNoise = 0.0;
   if (uJitter + uCrease + uSwitching > 0.0) {
@@ -196,6 +273,11 @@ void main () {
 
   vec4 base = tape(uvn);
   vec3 col = base.rgb;
+  if (e > 0.001) {
+    float split = uRgbShift * e / uResolution.x;
+    col.r = tape(uvn + vec2(split, 0.0)).r;
+    col.b = tape(uvn - vec2(split, 0.0)).b;
+  }
   col *= 1.0 - tcPhase;
 
   col = mix(col, col.yzx, clamp(snPhase, 0.0, 1.0));
@@ -222,6 +304,14 @@ void main () {
 
   float g = hash(uv * uResolution + fract(t) * vec2(127.1, 311.7)) - 0.5;
   col += g * uGrain;
+
+  if (e > 0.001 && uGNoise > 0.001) {
+    float grain = hash12(uv * uResolution + uSeed * 5.3) - 0.5;
+    float row = floor(uv.y * uResolution.y);
+    float flicker = hash12(vec2(row, uSeed + 41.0));
+    float lines = step(0.985 - 0.01 * uGNoise * e, flicker);
+    col += (grain * 0.22 + lines * 0.35) * uGNoise * min(e, 1.0) * base.a;
+  }
 
   float scan = sin(uv.y * uResolution.y * PI) * 0.5;
   col *= 1.0 - uScanlines * 0.35 * scan;
@@ -259,7 +349,7 @@ export function createVHS(
   options: VHSOptions = {},
 ): VHSInstance | null {
   const config = { ...DEFAULTS, ...options };
-  const { source, content, output } = elements;
+  const { source, content, output, backdropRoot } = elements;
 
   const gl = output.getContext('webgl2', {
     alpha: true,
@@ -326,23 +416,80 @@ export function createVHS(
   gl.enableVertexAttribArray(0);
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
-  const contentTexture = gl.createTexture()!;
-  gl.bindTexture(gl.TEXTURE_2D, contentTexture);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texImage2D(
-    gl.TEXTURE_2D,
-    0,
-    gl.RGBA,
-    1,
-    1,
-    0,
-    gl.RGBA,
-    gl.UNSIGNED_BYTE,
-    new Uint8Array([0, 0, 0, 0]),
-  );
+  function createTexture(unit: number): WebGLTexture {
+    const texture = gl!.createTexture()!;
+    gl!.activeTexture(unit);
+    gl!.bindTexture(gl!.TEXTURE_2D, texture);
+    gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_MIN_FILTER, gl!.LINEAR);
+    gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_MAG_FILTER, gl!.LINEAR);
+    gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_WRAP_S, gl!.CLAMP_TO_EDGE);
+    gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_WRAP_T, gl!.CLAMP_TO_EDGE);
+    gl!.texImage2D(
+      gl!.TEXTURE_2D,
+      0,
+      gl!.RGBA,
+      1,
+      1,
+      0,
+      gl!.RGBA,
+      gl!.UNSIGNED_BYTE,
+      new Uint8Array([0, 0, 0, 0]),
+    );
+    return texture;
+  }
+
+  const contentTexture = createTexture(gl.TEXTURE0);
+  const backdropTexture = createTexture(gl.TEXTURE1);
+  let contentW = 0;
+  let contentH = 0;
+  let backdropW = 0;
+  let backdropH = 0;
+  let backdropCanvas: HTMLCanvasElement | null = null;
+
+  function uploadCanvas(
+    texture: WebGLTexture,
+    unit: number,
+    canvas: HTMLCanvasElement,
+    knownW: number,
+    knownH: number,
+  ): boolean {
+    gl!.activeTexture(unit);
+    gl!.bindTexture(gl!.TEXTURE_2D, texture);
+    if (canvas.width === knownW && canvas.height === knownH) {
+      gl!.texSubImage2D(
+        gl!.TEXTURE_2D,
+        0,
+        0,
+        0,
+        gl!.RGBA,
+        gl!.UNSIGNED_BYTE,
+        canvas,
+      );
+      return false;
+    }
+    gl!.texImage2D(
+      gl!.TEXTURE_2D,
+      0,
+      gl!.RGBA,
+      gl!.RGBA,
+      gl!.UNSIGNED_BYTE,
+      canvas,
+    );
+    return true;
+  }
+
+  function findBackdrop(): HTMLCanvasElement | null {
+    if (!(htmlInCanvas && backdropRoot)) {
+      return null;
+    }
+    if (!backdropCanvas?.isConnected) {
+      backdropCanvas = backdropRoot.querySelector('canvas');
+    }
+    if (!backdropCanvas || backdropCanvas.width === 0) {
+      return null;
+    }
+    return backdropCanvas;
+  }
 
   let contentMaxX = 1;
 
@@ -373,8 +520,9 @@ export function createVHS(
 
   function syncCanvasSize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const width = Math.max(1, Math.round(output.clientWidth * dpr));
-    const height = Math.max(1, Math.round(output.clientHeight * dpr));
+    const outputDpr = Math.min(dpr, 1.5);
+    const width = Math.max(1, Math.round(output.clientWidth * outputDpr));
+    const height = Math.max(1, Math.round(output.clientHeight * outputDpr));
     if (output.width !== width || output.height !== height) {
       output.width = width;
       output.height = height;
@@ -384,14 +532,11 @@ export function createVHS(
       Math.max(0.05, content.clientWidth / Math.max(output.clientWidth, 1)),
     );
     if (htmlInCanvas) {
-      const cssWidth = Math.max(1, Math.round(source.clientWidth));
-      const cssHeight = Math.max(1, Math.round(source.clientHeight));
-      if (
-        source.width !== cssWidth * dpr ||
-        source.height !== cssHeight * dpr
-      ) {
-        source.width = cssWidth * dpr;
-        source.height = cssHeight * dpr;
+      const sourceWidth = Math.max(1, Math.round(source.clientWidth * dpr));
+      const sourceHeight = Math.max(1, Math.round(source.clientHeight * dpr));
+      if (source.width !== sourceWidth || source.height !== sourceHeight) {
+        source.width = sourceWidth;
+        source.height = sourceHeight;
       }
       paintable.requestPaint!();
     }
@@ -401,21 +546,75 @@ export function createVHS(
   syncBezelColor();
 
   function uploadContent() {
-    if (!(htmlInCanvas && contentDirty)) return;
+    if (!(htmlInCanvas && contentDirty)) {
+      return;
+    }
     contentDirty = false;
-    syncBezelColor();
-    gl!.bindTexture(gl!.TEXTURE_2D, contentTexture);
-    gl!.texImage2D(
-      gl!.TEXTURE_2D,
-      0,
-      gl!.RGBA,
-      gl!.RGBA,
-      gl!.UNSIGNED_BYTE,
-      source,
-    );
+    if (config.barrel > 0) {
+      syncBezelColor();
+    }
+    if (source.width === 0 || source.height === 0) {
+      return;
+    }
+    if (
+      uploadCanvas(contentTexture, gl!.TEXTURE0, source, contentW, contentH)
+    ) {
+      contentW = source.width;
+      contentH = source.height;
+    }
+  }
+
+  function uploadBackdrop(): HTMLCanvasElement | null {
+    const canvas = findBackdrop();
+    if (!canvas) {
+      return null;
+    }
+    if (
+      uploadCanvas(backdropTexture, gl!.TEXTURE1, canvas, backdropW, backdropH)
+    ) {
+      backdropW = canvas.width;
+      backdropH = canvas.height;
+    }
+    return canvas;
   }
 
   let time = 0;
+  let glitchTime = 0;
+  let burstAt = 0.6;
+  let burstSeed = 1;
+  let envelope = 0;
+
+  function hash(n: number) {
+    const s = Math.sin(n * 127.1) * 43758.5453;
+    return s - Math.floor(s);
+  }
+
+  function advanceGlitch(delta: number) {
+    glitchTime += delta;
+    if (config.glitch <= 0) {
+      envelope = 0;
+      return;
+    }
+    if (config.glitchInterval <= 0) {
+      envelope = 1;
+      return;
+    }
+    const sinceBurst = glitchTime - burstAt;
+    const duration = Math.max(config.glitchDuration, 0.05);
+    if (sinceBurst >= 0 && sinceBurst < duration) {
+      const tail = 1 - (sinceBurst / duration) ** 2;
+      envelope =
+        tail * (0.7 + 0.3 * hash(burstSeed + Math.floor(glitchTime * 24)));
+    } else {
+      envelope = 0;
+      if (sinceBurst >= duration) {
+        burstAt =
+          glitchTime +
+          Math.max(config.glitchInterval, 0.3) * (0.75 + 0.5 * Math.random());
+        burstSeed = Math.floor(Math.random() * 1000);
+      }
+    }
+  }
 
   const fract = (x: number) => x - Math.floor(x);
   const hash2 = (x: number, y: number) =>
@@ -446,10 +645,21 @@ export function createVHS(
 
   function render() {
     uploadContent();
+    const backdrop = uploadBackdrop();
     gl!.useProgram(program);
     gl!.activeTexture(gl!.TEXTURE0);
     gl!.bindTexture(gl!.TEXTURE_2D, contentTexture);
+    gl!.activeTexture(gl!.TEXTURE1);
+    gl!.bindTexture(gl!.TEXTURE_2D, backdropTexture);
+    gl!.activeTexture(gl!.TEXTURE0);
     gl!.uniform1i(uniforms.uContent, 0);
+    gl!.uniform1i(uniforms.uBackdrop, 1);
+    gl!.uniform1f(uniforms.uHasBackdrop, backdrop ? 1 : 0);
+    gl!.uniform2f(
+      uniforms.uBackdropScale,
+      backdrop ? output.clientWidth / Math.max(backdrop.clientWidth, 1) : 1,
+      backdrop ? output.clientHeight / Math.max(backdrop.clientHeight, 1) : 1,
+    );
     gl!.uniform2f(uniforms.uResolution, output.width, output.height);
     gl!.uniform1f(uniforms.uTime, time);
     gl!.uniform1f(uniforms.uWave, Math.max(config.wave, 0));
@@ -473,6 +683,19 @@ export function createVHS(
     gl!.uniform1f(uniforms.uSaturation, config.saturation);
     gl!.uniform1f(uniforms.uExposure, Math.max(config.exposure, 0));
     gl!.uniform1f(uniforms.uMaxX, contentMaxX);
+    gl!.uniform1f(uniforms.uSeed, Math.floor(glitchTime * 24) + burstSeed);
+    gl!.uniform1f(uniforms.uAmp, envelope * Math.max(config.glitch, 0));
+    gl!.uniform1f(uniforms.uSlices, Math.max(config.glitchSlices, 3));
+    gl!.uniform1f(uniforms.uShift, Math.max(config.glitchShift, 0) * dpr);
+    gl!.uniform1f(uniforms.uRgbShift, Math.max(config.glitchRgbShift, 0) * dpr);
+    gl!.uniform1f(
+      uniforms.uBlocks,
+      Math.min(Math.max(config.glitchBlocks, 0), 1),
+    );
+    gl!.uniform1f(
+      uniforms.uGNoise,
+      Math.min(Math.max(config.glitchNoise, 0), 1),
+    );
     gl!.bindFramebuffer(gl!.FRAMEBUFFER, null);
     gl!.viewport(0, 0, output.width, output.height);
     gl!.drawArrays(gl!.TRIANGLE_STRIP, 0, 4);
@@ -495,7 +718,12 @@ export function createVHS(
     }
     const delta = Math.min((now - lastTime) / 1000, 1 / 30);
     lastTime = now;
-    if (!reducedMotion) time += delta * config.speed;
+    if (!reducedMotion) {
+      time += delta * config.speed;
+      advanceGlitch(delta);
+    } else {
+      envelope = 0;
+    }
     render();
     if (reducedMotion && !contentDirty) {
       running = false;
@@ -544,6 +772,11 @@ export function createVHS(
       Object.assign(config, next);
       start();
     },
+    burst() {
+      burstAt = glitchTime;
+      burstSeed = Math.floor(Math.random() * 1000);
+      start();
+    },
     resize() {
       syncCanvasSize();
       start();
@@ -555,6 +788,7 @@ export function createVHS(
       intersection.disconnect();
       motionQuery.removeEventListener('change', onMotionChange);
       gl!.deleteTexture(contentTexture);
+      gl!.deleteTexture(backdropTexture);
       gl!.deleteProgram(program);
       gl!.deleteShader(vertexShader);
       gl!.deleteShader(fragmentShader);
@@ -566,13 +800,25 @@ export function createVHS(
 
 export interface VHSProps extends VHSOptions {
   children: ReactNode;
+  /** Live canvas content (such as a WebGL scene) composited behind the children. */
+  backdrop?: ReactNode;
+  /** Receives the root element so outside code can use it, for example as an event source. */
+  rootRef?: React.RefObject<HTMLDivElement | null>;
   className?: string;
   style?: React.CSSProperties;
 }
 
 const emptySubscribe = () => () => {};
 
-export function VHS({ children, className, style, ...options }: VHSProps) {
+export function VHS({
+  children,
+  backdrop,
+  rootRef,
+  className,
+  style,
+  ...options
+}: VHSProps) {
+  const backdropRef = useRef<HTMLDivElement>(null);
   const sourceRef = useRef<HTMLCanvasElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const outputRef = useRef<HTMLCanvasElement>(null);
@@ -593,7 +839,7 @@ export function VHS({ children, className, style, ...options }: VHSProps) {
     const output = outputRef.current;
     if (!(source && content && output)) return;
     instanceRef.current = createVHS(
-      { source, content, output },
+      { source, content, output, backdropRoot: backdropRef.current },
       initialOptions,
     );
     if (native && !instanceRef.current) setFailed(true);
@@ -608,7 +854,25 @@ export function VHS({ children, className, style, ...options }: VHSProps) {
   });
 
   return (
-    <div className={className} style={{ position: 'relative', ...style }}>
+    <div
+      ref={rootRef}
+      className={className}
+      style={{ position: 'relative', ...style }}
+    >
+      {backdrop ? (
+        <div
+          ref={backdropRef}
+          aria-hidden={native}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            overflow: 'hidden',
+            opacity: native ? 0 : 1,
+          }}
+        >
+          {backdrop}
+        </div>
+      ) : null}
       <canvas
         ref={sourceRef}
         // @ts-expect-error experimental html-in-canvas attribute

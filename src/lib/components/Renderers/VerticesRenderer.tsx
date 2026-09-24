@@ -188,15 +188,33 @@ export const VerticesModel: React.FC<VerticesModelProps> = ({
 interface VerticesViewerProps {
   children?: React.ReactElement<VerticesModelProps, typeof VerticesModel>;
   camera?: object;
-  height?: number | null
+  height?: number | null;
+  eventSource?: React.RefObject<HTMLElement | null>;
 }
 
 export const VerticesViewer = ({
   camera = { position: [0, 1, -3], fov: 60 },
   height,
+  eventSource,
   children
 }: VerticesViewerProps) => {
-  return <Canvas camera={camera} raycaster={{ params: { Points: { threshold: 0.09 } } as THREE.RaycasterParameters }} style={{ height: height ?? 700 }}>
+  return <Canvas
+    camera={camera}
+    dpr={[1, 1.5]}
+    gl={{ preserveDrawingBuffer: true }}
+    eventSource={eventSource as React.RefObject<HTMLElement> | undefined}
+    onCreated={(state) => {
+      state.setEvents({
+        compute: (event, current) => {
+          const rect = current.gl.domElement.getBoundingClientRect();
+          const x = (event.clientX - rect.left) / rect.width;
+          const y = (event.clientY - rect.top) / rect.height;
+          current.pointer.set(x * 2 - 1, -(y * 2 - 1));
+          current.raycaster.setFromCamera(current.pointer, current.camera);
+        },
+      });
+    }}
+    raycaster={{ params: { Points: { threshold: 0.09 } } as THREE.RaycasterParameters }} style={{ height: height ?? 700 }}>
     <ambientLight intensity={1} />
     <directionalLight position={[5, 5, 5]} intensity={1} />
     <Suspense fallback={null}>

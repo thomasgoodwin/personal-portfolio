@@ -5,10 +5,9 @@ import {
   Text,
 } from '@chakra-ui/react';
 import { Link } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import AnimateUnderline from '@/lib/components/AnimateUnderline/AnimateUnderline';
-import Glitch from '@/lib/components/Glitch/Glitch';
 import { ObjModel, ObjViewer } from '@/lib/components/Renderers/ObjRenderer';
 import {
   VerticesModel,
@@ -23,6 +22,7 @@ import { getCookie, setCookie } from '@/lib/services/storage';
 const cameraPos = [3.2, 3.6, 3.2];
 const Home = () => {
   const { height } = useElementHeight();
+  const rootRef = useRef<HTMLDivElement>(null);
   const [colorValue, setColorValue] = useState<string>(
     getCookie('website-primary') ?? '#00ff00',
   );
@@ -33,114 +33,105 @@ const Home = () => {
   };
 
   return (
-    <VHS style={{ width: '100%', height: '100%' }}>
-      <Glitch interval={15} style={{ width: '100%', height: '100%' }}>
-        <div
-          style={{ padding: '1rem 1.5rem', zIndex: 10, position: 'relative' }}
+    <VHS
+      rootRef={rootRef}
+      style={{ width: '100%', height: '100%' }}
+      backdrop={
+        <VerticesViewer
+          camera={{ position: cameraPos, fov: 65 }}
+          height={height}
+          eventSource={rootRef}
         >
-          <ColorPicker.Root
-            value={parseColor(colorValue)}
-            onValueChange={handleValueChange}
-          >
-            <ColorPicker.HiddenInput />
-            <ColorPicker.Label />
-            <ColorPicker.Control>
-              <ColorPicker.Trigger />
-            </ColorPicker.Control>
-            <ColorPicker.Positioner>
-              <ColorPicker.Content>
-                <ColorPicker.Area />
-                <ColorPicker.ChannelSlider channel="hue">
-                  <ColorPicker.ChannelSliderTrack />
-                  <ColorPicker.ChannelSliderThumb />
-                </ColorPicker.ChannelSlider>
-                <ColorPicker.SwatchGroup>
-                  <ColorPicker.SwatchTrigger value={colorValue}>
-                    <ColorPicker.Swatch value={colorValue} boxSize="6" />
-                  </ColorPicker.SwatchTrigger>
-                </ColorPicker.SwatchGroup>
-              </ColorPicker.Content>
-            </ColorPicker.Positioner>
-          </ColorPicker.Root>
-        </div>
-        {false && (
-          <ObjViewer>
-            <ObjModel
-              url="/assets/shark.obj"
-              animateRotation={{ axis: 'y', factor: 0.5, inverse: true }}
-            />
-          </ObjViewer>
-        )}
-        <div
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            right: 0,
-            bottom: 0,
-            height: 'fit-content',
-          }}
+          <VerticesModel
+            url="/assets/mountain.bin"
+            normalColor="#000000"
+            hoverColor={colorValue.toString()}
+            pointSize={0.05}
+            rotation={[0, 0.05, 0]}
+            fadeSpeed={0.01}
+            vertexFlickerPercentage={0.33}
+            shiftInterval={2200}
+          />
+        </VerticesViewer>
+      }
+    >
+      <div style={{ padding: '1rem 1.5rem', zIndex: 10, position: 'relative' }}>
+        <ColorPicker.Root
+          value={parseColor(colorValue)}
+          onValueChange={handleValueChange}
         >
-          <VerticesViewer
-            camera={{ position: cameraPos, fov: 65 }}
-            height={height}
-          >
-            <VerticesModel
-              url="/assets/mountain.bin"
-              normalColor="#000000"
-              hoverColor={colorValue.toString()}
-              pointSize={0.05}
-              rotation={[0, 0.05, 0]}
-              fadeSpeed={0.01}
-              vertexFlickerPercentage={0.33}
-              shiftInterval={2200}
-            />
-          </VerticesViewer>
+          <ColorPicker.HiddenInput />
+          <ColorPicker.Label />
+          <ColorPicker.Control>
+            <ColorPicker.Trigger />
+          </ColorPicker.Control>
+          <ColorPicker.Positioner>
+            <ColorPicker.Content>
+              <ColorPicker.Area />
+              <ColorPicker.ChannelSlider channel="hue">
+                <ColorPicker.ChannelSliderTrack />
+                <ColorPicker.ChannelSliderThumb />
+              </ColorPicker.ChannelSlider>
+              <ColorPicker.SwatchGroup>
+                <ColorPicker.SwatchTrigger value={colorValue}>
+                  <ColorPicker.Swatch value={colorValue} boxSize="6" />
+                </ColorPicker.SwatchTrigger>
+              </ColorPicker.SwatchGroup>
+            </ColorPicker.Content>
+          </ColorPicker.Positioner>
+        </ColorPicker.Root>
+      </div>
+      {false && (
+        <ObjViewer>
+          <ObjModel
+            url="/assets/shark.obj"
+            animateRotation={{ axis: 'y', factor: 0.5, inverse: true }}
+          />
+        </ObjViewer>
+      )}
+      <div className="home">
+        <div className="home-title">
+          <Text textStyle="h1" as="h1">
+            Thomas Goodwin
+          </Text>
+          <Text textStyle="h2" as="p" ml={8}>
+            Software Developer
+          </Text>
         </div>
-        <div className="home">
-          <div className="home-title">
-            <Text textStyle="h1" as="h1">
-              Thomas Goodwin
-            </Text>
-            <Text textStyle="h2" as="p" ml={8}>
-              Software Developer
-            </Text>
-          </div>
-          <div className="home-nav">
-            <div className="home-nav-links">
-              <AnimateUnderline alignment="right" hoverColor={colorValue}>
-                <Text textStyle="h1" as="h1">
-                  <Link
-                    to="/projects"
-                    from="/"
-                    style={{
-                      position: 'relative',
-                      zIndex: 5,
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    Projects
-                  </Link>
-                </Text>
-              </AnimateUnderline>
-              <AnimateUnderline alignment="right" hoverColor={colorValue}>
-                <Text textStyle="h2" as="h2">
-                  <a
-                    href="https://tomie.games/"
-                    style={{
-                      position: 'relative',
-                      zIndex: 5,
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    Games
-                  </a>
-                </Text>
-              </AnimateUnderline>
-            </div>
+        <div className="home-nav">
+          <div className="home-nav-links">
+            <AnimateUnderline alignment="right" hoverColor={colorValue}>
+              <Text textStyle="h1" as="h1">
+                <Link
+                  to="/projects"
+                  from="/"
+                  style={{
+                    position: 'relative',
+                    zIndex: 5,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Projects
+                </Link>
+              </Text>
+            </AnimateUnderline>
+            <AnimateUnderline alignment="right" hoverColor={colorValue}>
+              <Text textStyle="h2" as="h2">
+                <a
+                  href="https://tomie.games/"
+                  style={{
+                    position: 'relative',
+                    zIndex: 5,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Games
+                </a>
+              </Text>
+            </AnimateUnderline>
           </div>
         </div>
-      </Glitch>
+      </div>
     </VHS>
   );
 };
