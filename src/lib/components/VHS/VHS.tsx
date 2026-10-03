@@ -109,7 +109,11 @@ type PaintableCanvas = HTMLCanvasElement & {
 };
 
 type ElementImageContext = CanvasRenderingContext2D & {
-  drawElementImage?: (element: Element, x: number, y: number) => void;
+  drawElementImage?: (
+    element: Element,
+    x: number,
+    y: number,
+  ) => { toString(): string } | undefined;
 };
 
 const VERT = `#version 300 es
@@ -375,7 +379,12 @@ export function createVHS(
     paintable.onpaint = () => {
       try {
         sourceCtx!.reset();
-        sourceCtx!.drawElementImage!(content, 0, 0);
+        const transform = sourceCtx!.drawElementImage!(content, 0, 0);
+        // Keeps the real, interactive content's hit zone lined up with
+        // where it is actually painted inside the canvas.
+        if (transform) {
+          content.style.transform = transform.toString();
+        }
         contentDirty = true;
         wake();
       } catch {}
