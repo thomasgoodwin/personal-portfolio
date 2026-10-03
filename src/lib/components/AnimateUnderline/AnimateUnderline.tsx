@@ -22,6 +22,7 @@ const AnimateUnderline: React.FC<AnimateUnderlineProps> = ({
   return <div style={{ display: "flex", justifyContent: alignment }}>
     <div
       className={styles.wrapper}
+      data-animate-underline="true"
       style={{
         ["--hover-color" as any]: hoverColor,
         ["--underline-color" as any]: underlineColor

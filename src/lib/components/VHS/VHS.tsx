@@ -380,15 +380,74 @@ export function createVHS(
       try {
         sourceCtx!.reset();
         const transform = sourceCtx!.drawElementImage!(content, 0, 0);
-        // Keeps the real, interactive content's hit zone lined up with
-        // where it is actually painted inside the canvas.
         if (transform) {
           content.style.transform = transform.toString();
         }
         contentDirty = true;
         wake();
-      } catch {}
+      } catch (err) {
+        console.warn('VHS onpaint failed', err);
+      }
     };
+  }
+
+  function findInteractive(x: number, y: number): HTMLElement | null {
+    const candidates = content.querySelectorAll<HTMLElement>(
+      'a, button, input, select, textarea, [role="button"], [tabindex]',
+    );
+    let best: HTMLElement | null = null;
+    let bestArea = Infinity;
+    for (const el of candidates) {
+      const r = el.getBoundingClientRect();
+      if (x < r.left || x > r.right || y < r.top || y > r.bottom) {
+        continue;
+      }
+      const area = r.width * r.height;
+      if (area < bestArea) {
+        bestArea = area;
+        best = el;
+      }
+    }
+    return best;
+  }
+
+  let hovered: HTMLElement | null = null;
+
+  function setHover(target: HTMLElement | null) {
+    const next = target?.closest<HTMLElement>('[data-animate-underline]') ?? target;
+    if (hovered === next) {
+      return;
+    }
+    hovered?.removeAttribute('data-force-hover');
+    hovered = next;
+    hovered?.setAttribute('data-force-hover', 'true');
+  }
+
+  function onForwardedPointerMove(e: PointerEvent) {
+    if (e.target !== source) {
+      return;
+    }
+    const target = findInteractive(e.clientX, e.clientY);
+    setHover(target);
+    source.style.cursor = target ? 'pointer' : '';
+  }
+
+  function onForwardedPointerLeave() {
+    setHover(null);
+    source.style.cursor = '';
+  }
+
+  function onForwardedClick(e: MouseEvent) {
+    if (e.target !== source) {
+      return;
+    }
+    findInteractive(e.clientX, e.clientY)?.click();
+  }
+
+  if (htmlInCanvas) {
+    source.addEventListener('pointermove', onForwardedPointerMove);
+    source.addEventListener('pointerleave', onForwardedPointerLeave);
+    source.addEventListener('click', onForwardedClick);
   }
 
   function compile(type: number, text: string): WebGLShader {
@@ -802,7 +861,13 @@ export function createVHS(
       gl!.deleteShader(vertexShader);
       gl!.deleteShader(fragmentShader);
       gl!.deleteBuffer(quad);
-      if (htmlInCanvas) paintable.onpaint = null;
+      if (htmlInCanvas) {
+        paintable.onpaint = null;
+        source.removeEventListener('pointermove', onForwardedPointerMove);
+        source.removeEventListener('pointerleave', onForwardedPointerLeave);
+        source.removeEventListener('click', onForwardedClick);
+        hovered?.removeAttribute('data-force-hover');
+      }
     },
   };
 }

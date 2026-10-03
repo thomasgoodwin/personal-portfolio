@@ -36,9 +36,9 @@ export default defineConfig(({ mode }) => {
   const isCheckDisabled = mode === 'production' || !!process.env.VITEST;
   return {
     plugins: [
+      tanstackRouter({ autoCodeSplitting: true }),
       react(),
       devtools(),
-      tanstackRouter({ autoCodeSplitting: true }),
       ...(!isCheckDisabled
         ? [
           checker({

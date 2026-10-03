@@ -17,12 +17,13 @@
   transition: background-color 0.33s ease
 }
 
-.wrapper:hover {
+.wrapper:hover,
+.wrapper[data-force-hover="true"] {
   color: var(--hover-color);
-
 }
 
-.wrapper:hover .line {
+.wrapper:hover .line,
+.wrapper[data-force-hover="true"] .line {
   background-color: var(--hover-color);
   animation: fill 0.44s forwards ease;
 }
